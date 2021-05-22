@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "engines": {
+    "node": "10.15.1"
+  },
   "scripts": {
     "start": "parcel ./src/index.html --out-dir dist",
     "build": "parcel build ./src/index.html --out-dir dist",
