@@ -1,0 +1,45 @@
+@import "~css-wipe";
+
+body {
+  color: #222;
+  font-family: sans-serif;
+  line-height: 1.5;
+}
+
+.ly_cont {
+  max-width: 1230px;
+  padding: 60px 15px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+#fullOverlay{
+  position: absolute;
+  left: 0; top: 0;
+  padding-top: 10vmin;
+  width: 100%; height: 100%;
+  background: rgba(100, 100, 100, .8);
+  z-index: 2147483647;
+}
+
+#fullOverlay_complete{
+  position: absolute;
+  left: 0; top: 0;
+  padding-top: 10vmin;
+  width: 100%; height: 100%;
+  background-image: url('http://drive.google.com/uc?export=view&id=1nLxWIFwAZBIAmANEcgd3cjX0A4hYhOFs');
+  z-index: 2147483647;
+}
+
+#fullOverlay_complete p {
+  animation: fadeIn 5s cubic-bezier(0.33, 1, 0.68, 1) 1 forwards;
+}
+ 
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
