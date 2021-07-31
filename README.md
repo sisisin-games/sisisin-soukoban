@@ -16,6 +16,7 @@ $ npm test
 
 Netlifyから行う。
 `.nvmrc` はデプロイ時に参照される。
+本番: https://sisisin-soukoban.netlify.app/
 
 ## 画像素材
 
