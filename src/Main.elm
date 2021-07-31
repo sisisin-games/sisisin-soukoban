@@ -27,11 +27,7 @@ main =
 
 
 type alias Model =
-    { stageNumber : Int
-    , gameStatus : GameStatus
-    , matrixSize : Int
-    , board : Board
-    , objectPlacement : Dict Int Cell
+    { mode : Mode
     }
 
 
@@ -40,12 +36,16 @@ init =
     let
         firstStatge =
             Maybe.withDefault { matrixSize = 0, initialCellPlaces = [], objectPlacement = [] } <| Dict.get 1 stages
+
+        initConfig =
+            { status = Play
+            , stageNumber = 1
+            , matrixSize = firstStatge.matrixSize
+            , board = initBoard firstStatge
+            , objectPlacement = Dict.fromList firstStatge.objectPlacement
+            }
     in
-    ( { stageNumber = 1
-      , gameStatus = Play
-      , matrixSize = firstStatge.matrixSize
-      , board = initBoard firstStatge
-      , objectPlacement = Dict.fromList firstStatge.objectPlacement
+    ( { mode = Normal initConfig
       }
     , Cmd.none
     )
@@ -61,6 +61,19 @@ type Cell
     | Container
     | Cord
     | Me
+
+
+type Mode
+    = Normal GameConfig
+
+
+type alias GameConfig =
+    { status : GameStatus
+    , stageNumber : Int
+    , matrixSize : Int
+    , board : Board
+    , objectPlacement : Dict Int Cell
+    }
 
 
 type GameStatus
@@ -194,97 +207,107 @@ getMyIndex board =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        KeyDown direction ->
-            let
-                current =
-                    getMyIndex model.board
+    case model.mode of
+        Normal gameConfig ->
+            case msg of
+                KeyDown direction ->
+                    let
+                        current =
+                            getMyIndex gameConfig.board
 
-                nextMyPoint =
-                    move { direction = direction, matrixSize = model.matrixSize, current = current } model.board Me
+                        nextMyPoint =
+                            move { direction = direction, matrixSize = gameConfig.matrixSize, current = current } gameConfig.board Me
 
-                nextCellMaybe =
-                    Array.get nextMyPoint model.board
+                        nextCellMaybe =
+                            Array.get nextMyPoint gameConfig.board
 
-                nextContainerPoint =
-                    move { direction = direction, matrixSize = model.matrixSize, current = nextMyPoint } model.board Container
+                        nextContainerPoint =
+                            move { direction = direction, matrixSize = gameConfig.matrixSize, current = nextMyPoint } gameConfig.board Container
 
-                placedObject =
-                    Maybe.withDefault Floor <| Dict.get current model.objectPlacement
+                        placedObject =
+                            Maybe.withDefault Floor <| Dict.get current gameConfig.objectPlacement
 
-                newBoard =
-                    setCell { cell = Me, point = nextMyPoint }
-                        << setCell { cell = placedObject, point = current }
+                        newBoard =
+                            setCell { cell = Me, point = nextMyPoint }
+                                << setCell { cell = placedObject, point = current }
 
-                board =
-                    if nextCellMaybe == Just Container && nextContainerPoint == nextMyPoint then
-                        model.board
+                        board =
+                            if nextCellMaybe == Just Container && nextContainerPoint == nextMyPoint then
+                                gameConfig.board
 
-                    else if nextCellMaybe == Just Container then
-                        (newBoard
-                            << setCell
-                                { cell = Container
-                                , point = nextContainerPoint
-                                }
-                        )
-                            model.board
+                            else if nextCellMaybe == Just Container then
+                                (newBoard
+                                    << setCell
+                                        { cell = Container
+                                        , point = nextContainerPoint
+                                        }
+                                )
+                                    gameConfig.board
 
-                    else
-                        newBoard model.board
+                            else
+                                newBoard gameConfig.board
 
-                gameStatus =
-                    judgeGameStatus model.objectPlacement board
-            in
-            case model.gameStatus of
-                Clear ->
-                    ( model, Cmd.none )
-
-                Compleate ->
-                    ( model, Cmd.none )
-
-                _ ->
-                    case gameStatus of
-                        Play ->
-                            ( { model
-                                | gameStatus = gameStatus
-                                , board = board
-                              }
-                            , Cmd.none
-                            )
-
+                        gameStatus =
+                            judgeGameStatus gameConfig.objectPlacement board
+                    in
+                    case gameConfig.status of
                         Clear ->
-                            ( { model | gameStatus = Clear, board = board }, Task.perform (always ChangeNextStage) <| Process.sleep 2000 )
-
-                        _ ->
                             ( model, Cmd.none )
 
-        ChangeNextStage ->
-            let
-                nextStageNumber =
-                    model.stageNumber + 1
+                        Compleate ->
+                            ( model, Cmd.none )
 
-                nextStage =
-                    Maybe.withDefault { matrixSize = 0, initialCellPlaces = [], objectPlacement = [] } <| Dict.get nextStageNumber stages
-            in
-            if nextStageNumber <= Dict.size stages then
-                ( { stageNumber = nextStageNumber
-                  , gameStatus = Play
-                  , matrixSize = nextStage.matrixSize
-                  , board = initBoard nextStage
-                  , objectPlacement = Dict.fromList nextStage.objectPlacement
-                  }
-                , Cmd.none
-                )
+                        _ ->
+                            case gameStatus of
+                                Play ->
+                                    ( { model
+                                        | mode =
+                                            Normal
+                                                { gameConfig
+                                                    | status = gameConfig.status
+                                                    , board = board
+                                                }
+                                      }
+                                    , Cmd.none
+                                    )
 
-            else
-                ( { model | gameStatus = Compleate }, Cmd.none )
+                                Clear ->
+                                    ( { model | mode = Normal { gameConfig | status = Clear, board = board } }, Task.perform (always ChangeNextStage) <| Process.sleep 2000 )
 
-        Reset ->
-            let
-                stage =
-                    Maybe.withDefault { matrixSize = 0, initialCellPlaces = [], objectPlacement = [] } <| Dict.get model.stageNumber stages
-            in
-            ( { model | board = initBoard stage }, Cmd.none )
+                                _ ->
+                                    ( model, Cmd.none )
+
+                ChangeNextStage ->
+                    let
+                        nextStageNumber =
+                            gameConfig.stageNumber + 1
+
+                        nextStage =
+                            Maybe.withDefault { matrixSize = 0, initialCellPlaces = [], objectPlacement = [] } <| Dict.get nextStageNumber stages
+                    in
+                    if nextStageNumber <= Dict.size stages then
+                        ( { mode =
+                                Normal
+                                    { gameConfig
+                                        | status = Play
+                                        , stageNumber = nextStageNumber
+                                        , matrixSize = nextStage.matrixSize
+                                        , board = initBoard nextStage
+                                        , objectPlacement = Dict.fromList nextStage.objectPlacement
+                                    }
+                          }
+                        , Cmd.none
+                        )
+
+                    else
+                        ( { model | mode = Normal { gameConfig | status = Compleate } }, Cmd.none )
+
+                Reset ->
+                    let
+                        stage =
+                            Maybe.withDefault { matrixSize = 0, initialCellPlaces = [], objectPlacement = [] } <| Dict.get gameConfig.stageNumber stages
+                    in
+                    ( { model | mode = Normal { gameConfig | board = initBoard stage } }, Cmd.none )
 
 
 type alias MoveArg =
@@ -414,34 +437,36 @@ view model =
             , style "margin" "1vmin 0"
             ]
     in
-    div [ style "margin-top" <| vmin 5.0 ]
-        [ div
-            attrs
-            [ button
-                [ onClick Reset
-                , style "height" <| vmin 5.0
+    case model.mode of
+        Normal gameConfig ->
+            div [ style "margin-top" <| vmin 5.0 ]
+                [ div
+                    attrs
+                    [ button
+                        [ onClick Reset
+                        , style "height" <| vmin 5.0
+                        ]
+                        [ text "このステージをリセット" ]
+                    ]
+                , div attrs
+                    [ viewBoard gameConfig
+                    , if gameConfig.status == Clear || gameConfig.status == Compleate then
+                        viewGameStatus gameConfig
+
+                      else
+                        text ""
+                    ]
                 ]
-                [ text "このステージをリセット" ]
-            ]
-        , div attrs
-            [ viewBoard model
-            , if model.gameStatus == Clear || model.gameStatus == Compleate then
-                viewGameStatus model
-
-              else
-                text ""
-            ]
-        ]
 
 
-viewBoard : Model -> Html msg
-viewBoard model =
+viewBoard : GameConfig -> Html msg
+viewBoard gameConfig =
     let
         sideLength =
             vmin boardLength
 
         cellSideLength =
-            boardLength / toFloat model.matrixSize
+            boardLength / toFloat gameConfig.matrixSize
 
         attrs =
             [ style "width" sideLength
@@ -449,7 +474,7 @@ viewBoard model =
             ]
     in
     div attrs
-        (List.map (\cell -> viewCell cellSideLength cell) (Array.toList model.board))
+        (List.map (\cell -> viewCell cellSideLength cell) (Array.toList gameConfig.board))
 
 
 viewCell : Float -> Cell -> Html msg
@@ -468,12 +493,12 @@ viewCell sideLength cell =
     img (src (floor cell) :: styles) []
 
 
-viewGameStatus : Model -> Html msg
-viewGameStatus model =
+viewGameStatus : GameConfig -> Html msg
+viewGameStatus gameConfig =
     let
         attrs =
             [ id
-                (if model.gameStatus == Compleate then
+                (if gameConfig.status == Compleate then
                     "fullOverlay_complete"
 
                  else
@@ -482,7 +507,7 @@ viewGameStatus model =
             ]
 
         result =
-            case model.gameStatus of
+            case gameConfig.status of
                 Clear ->
                     "ステージクリア!"
 
