@@ -4,7 +4,7 @@ import Array exposing (Array, indexedMap)
 import Browser
 import Browser.Events exposing (onKeyDown)
 import Dict as Dict exposing (Dict)
-import Html exposing (Html, button, div, img, p, text)
+import Html exposing (Html, button, div, img, li, p, text, ul)
 import Html.Attributes exposing (id, src, style)
 import Html.Events exposing (onClick)
 import Json.Decode as JD
@@ -31,21 +31,22 @@ type alias Model =
     }
 
 
-init : ( Model, Cmd Msg )
-init =
+initConfig =
     let
         firstStatge =
             Maybe.withDefault { matrixSize = 0, initialCellPlaces = [], objectPlacement = [] } <| Dict.get 1 stages
-
-        initConfig =
-            { status = Play
-            , stageNumber = 1
-            , matrixSize = firstStatge.matrixSize
-            , board = initBoard firstStatge
-            , objectPlacement = Dict.fromList firstStatge.objectPlacement
-            }
     in
-    ( { mode = Normal initConfig
+    { status = Play
+    , stageNumber = 1
+    , matrixSize = firstStatge.matrixSize
+    , board = initBoard firstStatge
+    , objectPlacement = Dict.fromList firstStatge.objectPlacement
+    }
+
+
+init : ( Model, Cmd Msg )
+init =
+    ( { mode = Select
       }
     , Cmd.none
     )
@@ -64,7 +65,8 @@ type Cell
 
 
 type Mode
-    = Normal GameConfig
+    = Select
+    | Normal GameConfig
 
 
 type alias GameConfig =
@@ -183,16 +185,17 @@ initBoard stage =
 
 
 type Msg
-    = KeyDown Direction
+    = KeyDown Key
     | ChangeNextStage
     | Reset
 
 
-type Direction
+type Key
     = Left
     | Up
     | Right
     | Down
+    | Enter
 
 
 getMyIndex : Board -> Int
@@ -210,19 +213,19 @@ update msg model =
     case model.mode of
         Normal gameConfig ->
             case msg of
-                KeyDown direction ->
+                KeyDown key ->
                     let
                         current =
                             getMyIndex gameConfig.board
 
                         nextMyPoint =
-                            move { direction = direction, matrixSize = gameConfig.matrixSize, current = current } gameConfig.board Me
+                            move { key = key, matrixSize = gameConfig.matrixSize, current = current } gameConfig.board Me
 
                         nextCellMaybe =
                             Array.get nextMyPoint gameConfig.board
 
                         nextContainerPoint =
-                            move { direction = direction, matrixSize = gameConfig.matrixSize, current = nextMyPoint } gameConfig.board Container
+                            move { key = key, matrixSize = gameConfig.matrixSize, current = nextMyPoint } gameConfig.board Container
 
                         placedObject =
                             Maybe.withDefault Floor <| Dict.get current gameConfig.objectPlacement
@@ -309,17 +312,25 @@ update msg model =
                     in
                     ( { model | mode = Normal { gameConfig | board = initBoard stage } }, Cmd.none )
 
+        Select ->
+            case msg of
+                KeyDown Enter ->
+                    ( { model | mode = Normal initConfig }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
 
 type alias MoveArg =
-    { direction : Direction, matrixSize : Int, current : Int }
+    { key : Key, matrixSize : Int, current : Int }
 
 
 move : MoveArg -> Board -> Cell -> Int
-move { direction, matrixSize, current } board cell =
+move { key, matrixSize, current } board cell =
     let
         destination : Int
         destination =
-            moveHelper { direction = direction, matrixSize = matrixSize, current = current }
+            moveHelper { key = key, matrixSize = matrixSize, current = current }
     in
     case Array.get destination board of
         Just Wall ->
@@ -338,18 +349,18 @@ move { direction, matrixSize, current } board cell =
 
 
 moveHelper : MoveArg -> Int
-moveHelper { direction, matrixSize, current } =
+moveHelper { key, matrixSize, current } =
     current
         + (if
-            (modBy matrixSize current == 0 && direction == Left)
-                || (current < matrixSize && direction == Up)
-                || (modBy matrixSize current == matrixSize - 1 && direction == Right)
-                || ((current + matrixSize) >= (matrixSize * matrixSize) && direction == Down)
+            (modBy matrixSize current == 0 && key == Left)
+                || (current < matrixSize && key == Up)
+                || (modBy matrixSize current == matrixSize - 1 && key == Right)
+                || ((current + matrixSize) >= (matrixSize * matrixSize) && key == Down)
            then
             0
 
            else
-            case direction of
+            case key of
                 Left ->
                     -1
 
@@ -361,6 +372,9 @@ moveHelper { direction, matrixSize, current } =
 
                 Down ->
                     matrixSize
+
+                _ ->
+                    0
           )
 
 
@@ -397,15 +411,20 @@ judgeGameStatus objectPlacement board =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    onKeyDown <| JD.map (\d -> KeyDown d) keyDecoder
+    case model.mode of
+        Normal _ ->
+            onKeyDown <| JD.map (\d -> KeyDown d) (keyDecoder toDirection)
+
+        Select ->
+            onKeyDown <| JD.map (\d -> KeyDown d) (keyDecoder toDirection)
 
 
-keyDecoder : JD.Decoder Direction
-keyDecoder =
-    JD.andThen toDirection (JD.field "key" JD.string)
+keyDecoder : (String -> JD.Decoder a) -> JD.Decoder a
+keyDecoder toA =
+    JD.andThen toA (JD.field "key" JD.string)
 
 
-toDirection : String -> JD.Decoder Direction
+toDirection : String -> JD.Decoder Key
 toDirection string =
     case string of
         "ArrowLeft" ->
@@ -419,6 +438,9 @@ toDirection string =
 
         "ArrowDown" ->
             JD.succeed Down
+
+        "Enter" ->
+            JD.succeed Enter
 
         _ ->
             JD.fail "can use direction key only"
@@ -455,6 +477,15 @@ view model =
 
                       else
                         text ""
+                    ]
+                ]
+
+        Select ->
+            div []
+                [ img [ style "width" "100%", src logo ] []
+                , div [ style "margin-top" <| vmin 5, style "margin-left" <| vmin 25 ]
+                    [ ul [ style "font-size" <| vmin 8 ] [ li [ style "list-style-type" "square" ] [ text "Game Play" ] ]
+                    , text "モードを選んで、Enterを押す"
                     ]
                 ]
 
@@ -525,6 +556,10 @@ viewGameStatus gameConfig =
             ]
             [ text result ]
         ]
+
+
+logo =
+    "http://drive.google.com/uc?export=view&id=1UKHNjZ4oaDgCGZrNaaicAt45iM4nKnya"
 
 
 floor : Cell -> String
