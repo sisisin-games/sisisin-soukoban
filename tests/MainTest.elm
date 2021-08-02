@@ -23,12 +23,19 @@ initBoardTest =
 updateTest : Test
 updateTest =
     let
+        dummyConfig: GameConfig
+        dummyConfig =
+            {
+                    stageNumber = 1
+                    , status = Play
+                    , matrixSize = 0
+                    , board = Array.fromList [ Floor, Me ]
+                    , objectPlacement = Dict.fromList []
+            }
+        dummyModel: Model
         dummyModel =
-            { stageNumber = 1
-            , gameStatus = Play
-            , matrixSize = 0
-            , board = Array.fromList [ Floor, Me ]
-            , objectPlacement = Dict.fromList []
+            {
+                mode = Normal dummyConfig
             }
 
         doMoveBoard msg model =
@@ -42,16 +49,22 @@ updateTest =
                 \_ ->
                     doMoveBoard (KeyDown Left)
                         { dummyModel
-                            | matrixSize = 2
-                            , board = Array.fromList [ Floor, Me ]
+                            | mode = Normal {
+                                dummyConfig
+                                | matrixSize = 2
+                                , board = Array.fromList [ Floor, Me ]
+                            }
                         }
                         |> Expect.equal (Array.fromList [ Me, Floor ])
             , test "移動先:FloorかつKeyDown:Rightの場合、Meは右方向に動く" <|
                 \_ ->
                     doMoveBoard (KeyDown Right)
                         { dummyModel
-                            | matrixSize = 2
-                            , board = Array.fromList [ Me, Floor ]
+                            | mode = Normal {
+                                dummyConfig
+                                | matrixSize = 2
+                                , board = Array.fromList [ Me, Floor ]
+                            }
                         }
                         |> Expect.equal (Array.fromList [ Floor, Me ])
             , test "移動先:FloorかつKeyDown:Upの場合、Meは上方向に動く" <|

@@ -610,7 +610,7 @@ view model =
                 , div [ style "margin-top" <| vmin 5, style "margin-bottom" <| vmin 5, style "margin-left" <| vmin 25 ]
                     [ p [] [ text "一辺のマス数" ]
                     , input [ value config.matrixSize, type_ "number", onInput ChangeMaxtrixSizeInput ] []
-                    , p [] [ text "盤面（入力方式： ①一段ごとに改行する ②自分m 壁w 座標. コンテナc 床 その他 or 入力なし）" ]
+                    , p [] [ text "盤面（入力方式： ①自分m 壁w 座標. コンテナc 床 その他 or 入力なし） ②改行は入れてもよい" ]
                     , textarea [ placeholder "盤面", value config.board, onInput ChangeBoardInput ] []
                     , br [] []
                     , p [ style "background-color" "#f5f5f5", style "border-radius" "5px", style "width" "30%", style "font-size" "80%", style "padding" <| vmin 1, style "margin-bottom" <| vmin 2 ]
