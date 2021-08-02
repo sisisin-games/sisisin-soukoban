@@ -4,7 +4,7 @@ import Array exposing (Array, indexedMap)
 import Browser
 import Browser.Events exposing (onKeyDown)
 import Dict as Dict exposing (Dict)
-import Html exposing (Html, button, div, img, input, li, p, text, textarea, ul)
+import Html exposing (Html, br, button, div, img, input, li, p, text, textarea, ul)
 import Html.Attributes exposing (id, placeholder, src, style, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as JD
@@ -599,21 +599,36 @@ view model =
             div []
                 [ img [ style "width" "100%", src logo ] []
                 , div [ style "margin-top" <| vmin 5, style "margin-left" <| vmin 25 ]
-                    [ ul [ style "font-size" <| vmin 7 ] lis
-                    , text "カーソルキーでモードを選んで、Enterを押す"
+                    [ text "カーソルキーでモードを選んで、Enterを押す"
+                    , ul [ style "font-size" <| vmin 7 ] lis
                     ]
                 ]
 
         InputOriginalStage config ->
             div []
                 [ img [ style "width" "100%", src logo ] []
-                , div [ style "margin-top" <| vmin 5, style "margin-left" <| vmin 25 ]
+                , div [ style "margin-top" <| vmin 5, style "margin-bottom" <| vmin 5, style "margin-left" <| vmin 25 ]
                     [ p [] [ text "一辺のマス数" ]
                     , input [ value config.matrixSize, type_ "number", onInput ChangeMaxtrixSizeInput ] []
-                    , p [] [ text "盤面" ]
+                    , p [] [ text "盤面（入力方式： ①一段ごとに改行する ②自分m 壁w 座標. コンテナc 床 その他 or 入力なし）" ]
                     , textarea [ placeholder "盤面", value config.board, onInput ChangeBoardInput ] []
+                    , br [] []
+                    , p [ style "background-color" "#f5f5f5", style "border-radius" "5px", style "width" "30%", style "font-size" "80%", style "padding" <| vmin 1, style "margin-bottom" <| vmin 2 ]
+                        [ text "(入力例)"
+                        , li [] [ text "一辺のマス数:", br [] [], text "3" ]
+                        , li []
+                            [ text "盤面:"
+                            , br [] []
+                            , text "www"
+                            , br [] []
+                            , text ".cm"
+                            , br [] []
+                            , text "w"
+                            ]
+                        ]
+                    , button [ onClick GenerateStage ] [ text "このステージで遊ぶ" ]
+                    , p [] [ text "※バリデーションをまだかけていません。意図しないステージが出来上がったらリロードして作り直してください。" ]
                     ]
-                , button [ onClick GenerateStage ] [ text "生成する" ]
                 ]
 
 
