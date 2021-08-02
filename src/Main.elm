@@ -4,9 +4,9 @@ import Array exposing (Array, indexedMap)
 import Browser
 import Browser.Events exposing (onKeyDown)
 import Dict as Dict exposing (Dict)
-import Html exposing (Html, button, div, img, li, p, text, ul)
-import Html.Attributes exposing (id, src, style)
-import Html.Events exposing (onClick)
+import Html exposing (Html, button, div, img, input, li, p, text, textarea, ul)
+import Html.Attributes exposing (id, placeholder, src, style, type_, value)
+import Html.Events exposing (onClick, onInput)
 import Json.Decode as JD
 import Process exposing (sleep)
 import Task
@@ -66,13 +66,25 @@ type Cell
 
 type Mode
     = Select Option
+    | InputOriginalStage OriginalStageConfig
     | Normal GameConfig
-    | InputOriginalStage
 
 
 type Option
     = NormalPlay
     | OriginalPlay
+
+
+type alias OriginalStageConfig =
+    { matrixSize : String
+    , board : String
+    }
+
+
+initOriginalStageConfig =
+    { matrixSize = "3"
+    , board = ""
+    }
 
 
 type alias GameConfig =
@@ -156,17 +168,6 @@ wwwwwwwwwwww
 
 stages : Dict Int Stage
 stages =
-    let
-        initial : String -> List ( Int, Cell )
-        initial stage =
-            List.filter (\( _, cell ) -> cell == Me || cell == Container) (createStage stage)
-
-        base : String -> List ( Int, Cell )
-        base stage =
-            List.filter
-                (\( _, cell ) -> cell == Wall || cell == Cord)
-                (createStage stage)
-    in
     Dict.fromList
         [ ( 1
           , Stage 6 (initial stage1) (base stage1)
@@ -175,6 +176,18 @@ stages =
           , Stage 12 (initial stage2) (base stage2)
           )
         ]
+
+
+initial : String -> List ( Int, Cell )
+initial stage =
+    List.filter (\( _, cell ) -> cell == Me || cell == Container) (createStage stage)
+
+
+base : String -> List ( Int, Cell )
+base stage =
+    List.filter
+        (\( _, cell ) -> cell == Wall || cell == Cord)
+        (createStage stage)
 
 
 initBoard : Stage -> Array Cell
@@ -194,6 +207,9 @@ type Msg
     = KeyDown Key
     | ChangeNextStage
     | Reset
+    | GenerateStage
+    | ChangeMaxtrixSizeInput String
+    | ChangeBoardInput String
 
 
 type Key
@@ -294,7 +310,10 @@ update msg model =
                         nextStage =
                             Maybe.withDefault { matrixSize = 0, initialCellPlaces = [], objectPlacement = [] } <| Dict.get nextStageNumber stages
                     in
-                    if nextStageNumber <= Dict.size stages then
+                    if gameConfig.stageNumber == -1 then
+                        ( { model | mode = Normal { gameConfig | status = Compleate } }, Cmd.none )
+
+                    else if nextStageNumber <= Dict.size stages then
                         ( { mode =
                                 Normal
                                     { gameConfig
@@ -318,6 +337,9 @@ update msg model =
                     in
                     ( { model | mode = Normal { gameConfig | board = initBoard stage } }, Cmd.none )
 
+                _ ->
+                    ( model, Cmd.none )
+
         Select option ->
             case msg of
                 KeyDown Enter ->
@@ -326,7 +348,7 @@ update msg model =
                             ( { model | mode = Normal initConfig }, Cmd.none )
 
                         OriginalPlay ->
-                            ( { model | mode = InputOriginalStage }, Cmd.none )
+                            ( { model | mode = InputOriginalStage initOriginalStageConfig }, Cmd.none )
 
                 KeyDown Up ->
                     ( { model
@@ -359,8 +381,36 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        InputOriginalStage ->
-            ( model, Cmd.none )
+        InputOriginalStage config ->
+            case msg of
+                ChangeMaxtrixSizeInput input ->
+                    ( { model | mode = InputOriginalStage { config | matrixSize = input } }, Cmd.none )
+
+                ChangeBoardInput input ->
+                    ( { model | mode = InputOriginalStage { config | board = input } }, Cmd.none )
+
+                GenerateStage ->
+                    let
+                        --TODO: 値が正しいかバリデーションする
+                        matrixSize =
+                            Maybe.withDefault 0 <| String.toInt config.matrixSize
+
+                        stage : Stage
+                        stage =
+                            Stage matrixSize (initial config.board) (base config.board)
+
+                        gameConfig =
+                            { status = Play
+                            , stageNumber = -1
+                            , matrixSize = matrixSize
+                            , board = initBoard stage
+                            , objectPlacement = Dict.fromList stage.objectPlacement
+                            }
+                    in
+                    ( { model | mode = Normal gameConfig }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
 
 
 type alias MoveArg =
@@ -554,9 +604,17 @@ view model =
                     ]
                 ]
 
-        _ ->
+        InputOriginalStage config ->
             div []
-                [ text "準備中" ]
+                [ img [ style "width" "100%", src logo ] []
+                , div [ style "margin-top" <| vmin 5, style "margin-left" <| vmin 25 ]
+                    [ p [] [ text "一辺のマス数" ]
+                    , input [ value config.matrixSize, type_ "number", onInput ChangeMaxtrixSizeInput ] []
+                    , p [] [ text "盤面" ]
+                    , textarea [ placeholder "盤面", value config.board, onInput ChangeBoardInput ] []
+                    ]
+                , button [ onClick GenerateStage ] [ text "生成する" ]
+                ]
 
 
 viewBoard : GameConfig -> Html msg
