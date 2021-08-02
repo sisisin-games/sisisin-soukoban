@@ -46,7 +46,7 @@ initConfig =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { mode = Select
+    ( { mode = Select NormalPlay
       }
     , Cmd.none
     )
@@ -65,8 +65,14 @@ type Cell
 
 
 type Mode
-    = Select
+    = Select Option
     | Normal GameConfig
+    | InputOriginalStage
+
+
+type Option
+    = NormalPlay
+    | OriginalPlay
 
 
 type alias GameConfig =
@@ -312,13 +318,49 @@ update msg model =
                     in
                     ( { model | mode = Normal { gameConfig | board = initBoard stage } }, Cmd.none )
 
-        Select ->
+        Select option ->
             case msg of
                 KeyDown Enter ->
-                    ( { model | mode = Normal initConfig }, Cmd.none )
+                    case option of
+                        NormalPlay ->
+                            ( { model | mode = Normal initConfig }, Cmd.none )
+
+                        OriginalPlay ->
+                            ( { model | mode = InputOriginalStage }, Cmd.none )
+
+                KeyDown Up ->
+                    ( { model
+                        | mode =
+                            Select
+                                (if option == NormalPlay then
+                                    OriginalPlay
+
+                                 else
+                                    NormalPlay
+                                )
+                      }
+                    , Cmd.none
+                    )
+
+                KeyDown Down ->
+                    ( { model
+                        | mode =
+                            Select
+                                (if option == NormalPlay then
+                                    OriginalPlay
+
+                                 else
+                                    NormalPlay
+                                )
+                      }
+                    , Cmd.none
+                    )
 
                 _ ->
                     ( model, Cmd.none )
+
+        InputOriginalStage ->
+            ( model, Cmd.none )
 
 
 type alias MoveArg =
@@ -415,8 +457,11 @@ subscriptions model =
         Normal _ ->
             onKeyDown <| JD.map (\d -> KeyDown d) (keyDecoder toDirection)
 
-        Select ->
+        Select _ ->
             onKeyDown <| JD.map (\d -> KeyDown d) (keyDecoder toDirection)
+
+        _ ->
+            Sub.none
 
 
 keyDecoder : (String -> JD.Decoder a) -> JD.Decoder a
@@ -480,14 +525,38 @@ view model =
                     ]
                 ]
 
-        Select ->
+        Select option ->
+            let
+                options =
+                    [ ( NormalPlay, "Game Play" ), ( OriginalPlay, "Game Play on Original Stage" ) ]
+
+                lis =
+                    List.map
+                        (\t ->
+                            li
+                                [ style "list-style-type"
+                                    (if option == Tuple.first t then
+                                        "square"
+
+                                     else
+                                        "none"
+                                    )
+                                ]
+                                [ text (Tuple.second t) ]
+                        )
+                        options
+            in
             div []
                 [ img [ style "width" "100%", src logo ] []
                 , div [ style "margin-top" <| vmin 5, style "margin-left" <| vmin 25 ]
-                    [ ul [ style "font-size" <| vmin 8 ] [ li [ style "list-style-type" "square" ] [ text "Game Play" ] ]
-                    , text "モードを選んで、Enterを押す"
+                    [ ul [ style "font-size" <| vmin 7 ] lis
+                    , text "カーソルキーでモードを選んで、Enterを押す"
                     ]
                 ]
+
+        _ ->
+            div []
+                [ text "準備中" ]
 
 
 viewBoard : GameConfig -> Html msg
