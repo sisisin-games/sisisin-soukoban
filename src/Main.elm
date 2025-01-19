@@ -701,26 +701,26 @@ viewGameStatus gameConfig =
 
 
 logo =
-    "http://drive.google.com/uc?export=view&id=1UKHNjZ4oaDgCGZrNaaicAt45iM4nKnya"
+    "https://lh3.googleusercontent.com/d/1UKHNjZ4oaDgCGZrNaaicAt45iM4nKnya"
 
 
 floor : Cell -> String
 floor cell =
     case cell of
         Floor ->
-            "http://drive.google.com/uc?export=view&id=1jd773St3MIlhMxNcDPJCMq9aUgMrdF0i"
+            "https://lh3.googleusercontent.com/d/1jd773St3MIlhMxNcDPJCMq9aUgMrdF0i"
 
         Wall ->
-            "http://drive.google.com/uc?export=view&id=1pXYU3PelaYMUbD2m06noTxXoCkwnV9yP"
+            "https://lh3.googleusercontent.com/d/1pXYU3PelaYMUbD2m06noTxXoCkwnV9yP"
 
         Container ->
-            "http://drive.google.com/uc?export=view&id=1J2wvdXZQ6f1bK8tBqPqLa8tszV5HSTAb"
+            "https://lh3.googleusercontent.com/d/1J2wvdXZQ6f1bK8tBqPqLa8tszV5HSTAb"
 
         Cord ->
-            "http://drive.google.com/uc?export=view&id=11hmjC2DshMm2DsjcVbPXsXTI9K36sUUG"
+            "https://lh3.googleusercontent.com/d/11hmjC2DshMm2DsjcVbPXsXTI9K36sUUG"
 
         Me ->
-            "http://drive.google.com/uc?export=view&id=1I_FyCkRwUVTi9we0g_cMI5R3KY9s-N72"
+            "https://lh3.googleusercontent.com/d/1I_FyCkRwUVTi9we0g_cMI5R3KY9s-N72"
 
 
 boardLength : Float
